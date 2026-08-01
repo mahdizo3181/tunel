@@ -16,7 +16,7 @@ set -uo pipefail
 # EDIT THIS before pushing to your own GitHub repository, or
 # override at invocation time with TUNEL_REPO_URL=... bash <(...)
 # ============================================================
-REPO_URL="${TUNEL_REPO_URL:-https://github.com/YOUR_GITHUB_USERNAME/tunel.git}"
+REPO_URL="[https://github.com/mahdizo3181/tunel.git](https://github.com/mahdizo3181/tunel.git)"
 BRANCH="${TUNEL_BRANCH:-main}"
 INSTALL_DIR="${TUNEL_INSTALL_DIR:-/root/tunel}"
 # Must match the uid the "gate" user is created with in Dockerfile.server.
