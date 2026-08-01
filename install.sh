@@ -4,7 +4,7 @@
 #
 # Run on a fresh VPS as root:
 #
-#   bash <(curl -fsSL https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/tunel/main/install.sh)
+#   bash <(curl -fsSL https://raw.githubusercontent.com/mahdizo3181/tunel/main/install.sh)
 #
 # (process substitution, not a `curl | bash` pipe, so stdin stays free for
 # the interactive prompts below). On a machine that already has the repo
@@ -16,7 +16,7 @@ set -uo pipefail
 # EDIT THIS before pushing to your own GitHub repository, or
 # override at invocation time with TUNEL_REPO_URL=... bash <(...)
 # ============================================================
-REPO_URL="[https://github.com/mahdizo3181/tunel.git](https://github.com/mahdizo3181/tunel.git)"
+REPO_URL="https://github.com/mahdizo3181/tunel.git"
 BRANCH="${TUNEL_BRANCH:-main}"
 INSTALL_DIR="${TUNEL_INSTALL_DIR:-/root/tunel}"
 # Must match the uid the "gate" user is created with in Dockerfile.server.
