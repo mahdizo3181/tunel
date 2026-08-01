@@ -197,6 +197,45 @@ write_env_token() {
 	fi
 }
 
+# ---------- TLS: acme.sh (Let's Encrypt) ----------
+ACME_SH="$HOME/.acme.sh/acme.sh"
+
+ensure_acme_sh() {
+	if [[ -x "$ACME_SH" ]]; then
+		return
+	fi
+	log "acme.sh not found — installing..."
+	curl https://get.acme.sh | sh || die "Failed to install acme.sh"
+	[[ -x "$ACME_SH" ]] || die "acme.sh install did not produce $ACME_SH"
+	ok "acme.sh installed."
+}
+
+issue_letsencrypt_cert() {
+	local domain="$1"
+	ensure_acme_sh
+
+	warn "Standalone issuance needs port 80 reachable from the internet, with"
+	warn "$domain's DNS already pointed at this server — free anything bound to :80 first."
+	confirm "Continue with Let's Encrypt issuance for $domain?" "y" || die "Cancelled."
+
+	log "Requesting a Let's Encrypt certificate for $domain..."
+	"$ACME_SH" --issue -d "$domain" --standalone --server letsencrypt \
+		|| die "acme.sh failed to issue a certificate for $domain (port 80 blocked, or DNS not pointed here yet?)."
+
+	# acme.sh's renewal cron re-runs --install-cert as root, which would
+	# otherwise reset the gate-readable ownership/perms set below.
+	local reload_cmd
+	reload_cmd="chown ${GATE_UID}:${GATE_UID} '$INSTALL_DIR/certs/origin.pem' '$INSTALL_DIR/certs/origin-key.pem' && chmod 640 '$INSTALL_DIR/certs/origin.pem' '$INSTALL_DIR/certs/origin-key.pem'"
+
+	"$ACME_SH" --install-cert -d "$domain" \
+		--fullchain-file "$INSTALL_DIR/certs/origin.pem" \
+		--key-file       "$INSTALL_DIR/certs/origin-key.pem" \
+		--reloadcmd      "$reload_cmd" \
+		|| die "acme.sh failed to install the issued certificate."
+
+	ok "Let's Encrypt certificate issued for $domain and installed to certs/."
+}
+
 # ---------- server (gate) setup ----------
 setup_server() {
 	require_repo
@@ -216,17 +255,25 @@ setup_server() {
 
 	echo
 	echo "TLS mode for the origin:"
-	echo "  1) Cloudflare Origin CA certificate (recommended — SSL/TLS mode = Full (strict))"
-	echo "  2) Self-signed certificate (SSL/TLS mode = Full, NOT strict)"
-	echo "  3) No TLS / plain HTTP (CDN edge terminates TLS, SSL/TLS mode = Flexible — not recommended)"
+	echo "  1) Auto-issue Let's Encrypt cert via acme.sh (requires port 80 open temporarily)"
+	echo "  2) Cloudflare Origin CA certificate (SSL/TLS mode = Full (strict))"
+	echo "  3) Self-signed certificate (SSL/TLS mode = Full, NOT strict)"
+	echo "  4) No TLS / plain HTTP (CDN edge terminates TLS, SSL/TLS mode = Flexible — not recommended)"
 	local tls_choice
-	read -r -p "Choose [1-3] (default 2): " tls_choice
-	tls_choice="${tls_choice:-2}"
+	read -r -p "Choose [1-4] (default 3): " tls_choice
+	tls_choice="${tls_choice:-3}"
 
 	mkdir -p "$INSTALL_DIR/certs"
 	local cert_file="" key_file=""
 	case "$tls_choice" in
 		1)
+			local le_domain
+			prompt le_domain "Domain name to issue the certificate for (e.g. zakhmban.ir)" ""
+			issue_letsencrypt_cert "$le_domain"
+			cert_file="/certs/origin.pem"
+			key_file="/certs/origin-key.pem"
+			;;
+		2)
 			local src_cert src_key
 			prompt src_cert "Path to the Origin CA certificate (.pem)" ""
 			prompt src_key  "Path to the matching private key (.pem)" ""
@@ -237,7 +284,7 @@ setup_server() {
 			cert_file="/certs/origin.pem"
 			key_file="/certs/origin-key.pem"
 			;;
-		3)
+		4)
 			warn "Running without TLS on the origin. Only do this behind a CDN in Flexible mode."
 			;;
 		*)
@@ -376,6 +423,26 @@ stop_tunnel() {
 	ok "Stopped."
 }
 
+uninstall_tunnel() {
+	echo
+	warn "This stops and removes all tunel containers (including volumes) and deletes ${INSTALL_DIR}."
+	confirm "Are you sure you want to uninstall tunel?" "n" || { log "Uninstall cancelled."; return; }
+
+	[[ -n "$INSTALL_DIR" && "$INSTALL_DIR" != "/" ]] || die "Refusing to remove suspicious install dir: '$INSTALL_DIR'"
+
+	if [[ -f "$INSTALL_DIR/docker-compose.yml" ]]; then
+		log "Stopping and removing containers and volumes..."
+		( cd "$INSTALL_DIR" && $COMPOSE_CMD down -v ) || warn "docker compose down failed — continuing with removal."
+	fi
+
+	log "Removing ${INSTALL_DIR}..."
+	cd / || true
+	rm -rf -- "$INSTALL_DIR" || die "Failed to remove $INSTALL_DIR"
+
+	ok "Tunel has been completely uninstalled."
+	exit 0
+}
+
 # ---------- menu ----------
 print_banner() {
 	clear
@@ -397,6 +464,7 @@ main_menu() {
 		echo -e "  ${C_GREEN}[3]${C_RESET} View Live Logs"
 		echo -e "  ${C_GREEN}[4]${C_RESET} Restart Tunnel"
 		echo -e "  ${C_GREEN}[5]${C_RESET} Stop Tunnel"
+		echo -e "  ${C_RED}[6]${C_RESET} Uninstall Tunnel"
 		echo -e "  ${C_RED}[0]${C_RESET} Exit"
 		echo
 		local choice
@@ -408,6 +476,7 @@ main_menu() {
 			3) view_logs ;;
 			4) restart_tunnel ;;
 			5) stop_tunnel ;;
+			6) uninstall_tunnel ;;
 			0) echo "Bye."; exit 0 ;;
 			*) warn "Invalid option." ;;
 		esac
