@@ -25,7 +25,7 @@ installs Docker/git if missing, clones this repo, and walks you through
 setting up whichever side belongs on that machine.
 
 ```
-bash <(curl -fsSL https://raw.githubusercontent.com/<you>/<repo>/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/mahdizo3181/tunel/main/install.sh)
 ```
 
 Run it as root on the restricted-region box and choose **[1] Setup & Start
