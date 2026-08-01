@@ -1,0 +1,7 @@
+.git
+certs/
+.env
+config.server.json
+config.client.json
+/gate
+/bridge

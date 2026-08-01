@@ -1,0 +1,21 @@
+{
+  "listen_addr": "0.0.0.0:443",
+  "tls_cert_file": "/certs/origin.pem",
+  "tls_key_file": "/certs/origin-key.pem",
+  "ws_path": "/ws-updates",
+  "auth_header": "X-Tunnel-Auth",
+  "auth_token": "CHANGE-ME-long-random-secret",
+  "forward_listen_addr": "0.0.0.0:1194",
+  "decoy_html_path": "",
+  "padding": {
+    "min_pad_bytes": 16,
+    "max_pad_bytes": 256,
+    "min_chunk": 1024,
+    "max_chunk": 8192
+  },
+  "ping_interval_seconds": 10,
+  "pong_timeout_seconds": 20,
+  "yamux_keepalive_seconds": 15,
+  "tcp_buffer_bytes": 4194304,
+  "session_wait_millis": 5000
+}

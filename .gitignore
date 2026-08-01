@@ -1,0 +1,6 @@
+/gate
+/bridge
+/config.server.json
+/config.client.json
+/certs/
+.env

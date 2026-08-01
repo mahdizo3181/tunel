@@ -1,0 +1,21 @@
+{
+  "server_url": "wss://your-domain.example.com/ws-updates",
+  "sni": "",
+  "auth_header": "X-Tunnel-Auth",
+  "auth_token": "CHANGE-ME-long-random-secret",
+  "target_addr": "127.0.0.1:1194",
+  "insecure_skip_verify": false,
+  "padding": {
+    "min_pad_bytes": 16,
+    "max_pad_bytes": 256,
+    "min_chunk": 1024,
+    "max_chunk": 8192
+  },
+  "ping_interval_seconds": 10,
+  "pong_timeout_seconds": 20,
+  "yamux_keepalive_seconds": 15,
+  "tcp_buffer_bytes": 4194304,
+  "reconnect_min_backoff_millis": 1000,
+  "reconnect_max_backoff_millis": 30000,
+  "stable_conn_millis": 60000
+}

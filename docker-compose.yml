@@ -1,0 +1,42 @@
+# Two independent stacks live in this one file for convenience, but in
+# practice `gate` is deployed on the restricted-region host and `bridge` on
+# the unrestricted-region host — they are never meant to run side by side.
+# Bring up only the one that belongs on a given machine, e.g.:
+#   docker compose up -d gate
+#   docker compose up -d bridge
+services:
+  gate:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    image: tunel-gate:latest
+    container_name: tunel-gate
+    restart: unless-stopped
+    # host networking so the gate can bind 443 directly and the forwarding
+    # port is reachable exactly as configured, with no extra NAT layer for
+    # DPI to fingerprint. Requires Linux.
+    network_mode: host
+    environment:
+      # Prefer injecting the secret via env rather than baking it into the
+      # config file that ends up in the image/volume.
+      - TUNNEL_AUTH_TOKEN=${TUNNEL_AUTH_TOKEN:?set TUNNEL_AUTH_TOKEN in your .env}
+    volumes:
+      - ./config.server.json:/app/config.server.json:ro
+      - ./certs:/certs:ro
+    command: ["-config", "/app/config.server.json"]
+
+  bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    image: tunel-bridge:latest
+    container_name: tunel-bridge
+    restart: unless-stopped
+    # host networking so target_addr (e.g. 127.0.0.1:1194) reaches whatever
+    # is actually listening on the host's loopback (a VPN panel, etc.).
+    network_mode: host
+    environment:
+      - TUNNEL_AUTH_TOKEN=${TUNNEL_AUTH_TOKEN:?set TUNNEL_AUTH_TOKEN in your .env}
+    volumes:
+      - ./config.client.json:/app/config.client.json:ro
+    command: ["-config", "/app/config.client.json"]

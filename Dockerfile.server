@@ -1,0 +1,19 @@
+# Builds the gate (server) binary — deploy this in the restricted region.
+FROM golang:1.24-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+COPY vendor ./vendor
+COPY common ./common
+COPY server ./server
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -trimpath -ldflags="-s -w" -o /out/gate ./server
+
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates libcap && \
+    adduser -D -H -u 10001 gate
+COPY --from=build /out/gate /usr/local/bin/gate
+# Allow binding port 443 without running the process as root.
+RUN setcap 'cap_net_bind_service=+ep' /usr/local/bin/gate
+WORKDIR /app
+USER gate
+ENTRYPOINT ["/usr/local/bin/gate"]
+CMD ["-config", "/app/config.server.json"]

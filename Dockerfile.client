@@ -1,0 +1,18 @@
+# Builds the bridge (client) binary — deploy this in the unrestricted region,
+# alongside (or with network access to) the service it forwards to.
+FROM golang:1.24-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+COPY vendor ./vendor
+COPY common ./common
+COPY client ./client
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -trimpath -ldflags="-s -w" -o /out/bridge ./client
+
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates && \
+    adduser -D -H -u 10001 bridge
+COPY --from=build /out/bridge /usr/local/bin/bridge
+WORKDIR /app
+USER bridge
+ENTRYPOINT ["/usr/local/bin/bridge"]
+CMD ["-config", "/app/config.client.json"]
